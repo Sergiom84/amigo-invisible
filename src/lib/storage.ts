@@ -1,6 +1,6 @@
 import type { Participant, PersistedAppState } from '../types';
 
-const STORAGE_KEY = 'amigo_invisible_state_v2';
+const STORAGE_KEY = 'amigo_invisible_state_v3';
 
 export function createParticipant(): Participant {
   const id =

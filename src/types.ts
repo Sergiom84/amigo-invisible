@@ -25,9 +25,10 @@ export interface SecretPayload {
 export interface DrawEntry {
   giverId: string;
   giverName: string;
-  normalizedPhone: string;
+  isOrganizer?: boolean;
+  normalizedPhone?: string;
   secretUrl: string;
-  whatsappUrl: string;
+  whatsappUrl?: string;
   sent: boolean;
 }
 

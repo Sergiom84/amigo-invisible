@@ -1,12 +1,16 @@
 import { useState } from 'react';
+import confetti from 'canvas-confetti';
 import {
   Check,
   Copy,
   Edit3,
+  EyeOff,
   Lock,
   MessageCircle,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
+import { decryptPayload } from '../lib/crypto';
 import type { DrawEntry } from '../types';
 
 interface ShareDashboardViewProps {
@@ -25,10 +29,38 @@ export function ShareDashboardView({
   onBackToEdit,
 }: ShareDashboardViewProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [organizerTarget, setOrganizerTarget] = useState<string | null>(null);
 
-  const sentCount = entries.filter((e) => e.sent).length;
-  const totalCount = entries.length;
+  const organizerEntry = entries.find((e) => e.isOrganizer);
+  const recipientEntries = entries.filter((e) => !e.isOrganizer);
+
+  const sentCount = recipientEntries.filter((e) => e.sent).length;
+  const totalCount = recipientEntries.length;
   const progressPct = totalCount > 0 ? Math.round((sentCount / totalCount) * 100) : 0;
+
+  async function handleToggleOrganizerReveal() {
+    if (organizerTarget) {
+      setOrganizerTarget(null);
+      return;
+    }
+    if (!organizerEntry) return;
+    const hashIndex = organizerEntry.secretUrl.indexOf('#s=');
+    if (hashIndex === -1) return;
+    const token = organizerEntry.secretUrl.slice(hashIndex + 3);
+    const payload = await decryptPayload(token);
+    if (!payload) return;
+    setOrganizerTarget(payload.r);
+    try {
+      confetti({
+        particleCount: 65,
+        spread: 65,
+        origin: { y: 0.45 },
+        colors: ['#6b1d2f', '#d4a353', '#fbf7f0', '#e7c683', '#128c4a'],
+      });
+    } catch {
+      // Ignore confetti errors
+    }
+  }
 
   async function handleCopyLink(entry: DrawEntry) {
     try {
@@ -38,7 +70,6 @@ export function ShareDashboardView({
         setCopiedId((curr) => (curr === entry.giverId ? null : curr));
       }, 2200);
     } catch {
-      // Fallback prompt if clipboard API is restricted
       window.prompt(
         `Copia el sobre secreto de ${entry.giverName} (no lo abras si no es el tuyo):`,
         entry.secretUrl,
@@ -53,6 +84,7 @@ export function ShareDashboardView({
       );
       if (!ok) return;
     }
+    setOrganizerTarget(null);
     onRedraw();
   }
 
@@ -63,6 +95,7 @@ export function ShareDashboardView({
       );
       if (!ok) return;
     }
+    setOrganizerTarget(null);
     onBackToEdit();
   }
 
@@ -78,12 +111,73 @@ export function ShareDashboardView({
         </span>
       </div>
 
+      {organizerEntry && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 14,
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--burgundy-soft)',
+            border: '1px solid rgba(107, 29, 47, 0.2)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--burgundy-dark)' }}>
+                Tu sobre ({organizerEntry.giverName})
+              </div>
+              <div style={{ fontSize: '0.83rem', color: 'var(--ink-muted)' }}>
+                {organizerTarget
+                  ? 'Toca para volver a ocultarlo'
+                  : 'Descubre aquí a quién te ha tocado regalar'}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="small-btn"
+              onClick={handleToggleOrganizerReveal}
+            >
+              {organizerTarget ? (
+                <>
+                  <EyeOff size={15} />
+                  Ocultar
+                </>
+              ) : (
+                <>
+                  <Sparkles size={15} />
+                  Abrir mi sobre
+                </>
+              )}
+            </button>
+          </div>
+
+          {organizerTarget && (
+            <div
+              className="reveal-result-box"
+              style={{ marginTop: 12, padding: '16px 14px', textAlign: 'center' }}
+            >
+              <div className="reveal-label">Te ha tocado regalar a</div>
+              <h3 className="reveal-target-name" style={{ fontSize: '1.75rem' }}>
+                {organizerTarget}
+              </h3>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="alert alert--info" style={{ marginTop: 0 }}>
         <Lock size={18} style={{ flexShrink: 0, marginTop: 1 }} />
         <span>
           <strong>Sorteo secreto completado.</strong> Cada botón abre WhatsApp con el
-          enlace cifrado de esa persona, sin mostrar quién le ha tocado. No abras los
-          enlaces de los demás si tú también juegas.
+          enlace cifrado de esa persona, sin mostrar quién le ha tocado.
         </span>
       </div>
 
@@ -102,7 +196,7 @@ export function ShareDashboardView({
       </div>
 
       <div className="share-list">
-        {entries.map((entry) => (
+        {recipientEntries.map((entry) => (
           <div
             key={entry.giverId}
             className={`share-item ${entry.sent ? 'share-item--sent' : ''}`}
@@ -118,20 +212,24 @@ export function ShareDashboardView({
                   {entry.sent ? 'Enviado ✓' : 'Pendiente'}
                 </span>
               </div>
-              <div className="share-phone">+{entry.normalizedPhone}</div>
+              {entry.normalizedPhone && (
+                <div className="share-phone">+{entry.normalizedPhone}</div>
+              )}
             </div>
 
             <div className="share-actions">
-              <a
-                href={entry.whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`whatsapp-btn ${entry.sent ? 'whatsapp-btn--sent' : ''}`}
-                onClick={() => onMarkSent(entry.giverId)}
-              >
-                <MessageCircle size={17} />
-                {entry.sent ? 'Reenviar' : 'Enviar WhatsApp'}
-              </a>
+              {entry.whatsappUrl && (
+                <a
+                  href={entry.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`whatsapp-btn ${entry.sent ? 'whatsapp-btn--sent' : ''}`}
+                  onClick={() => onMarkSent(entry.giverId)}
+                >
+                  <MessageCircle size={17} />
+                  {entry.sent ? 'Reenviar' : 'Enviar WhatsApp'}
+                </a>
+              )}
 
               <button
                 type="button"

@@ -3,7 +3,7 @@ import { RevealView } from './components/RevealView';
 import { SetupView } from './components/SetupView';
 import { ShareDashboardView } from './components/ShareDashboardView';
 import { encryptPayload } from './lib/crypto';
-import { solveSecretSanta, type ExclusionMap } from './lib/draw';
+import { solveSecretSanta } from './lib/draw';
 import { buildWhatsAppShareUrl, normalizePhoneForWhatsApp } from './lib/phone';
 import { loadPersistedState, savePersistedState } from './lib/storage';
 import type { DrawEntry, PersistedAppState, SecretPayload } from './types';
@@ -40,24 +40,19 @@ export function App() {
   }, [appState]);
 
   async function runDraw() {
-    const active = appState.participants.filter(
-      (p) =>
+    const active = appState.participants.filter((p, index) => {
+      if (index === 0) return p.name.trim().length > 0;
+      return (
         p.name.trim().length > 0 &&
-        normalizePhoneForWhatsApp(p.phone, p.countryCode) !== null,
-    );
+        normalizePhoneForWhatsApp(p.phone, p.countryCode) !== null
+      );
+    });
 
     if (active.length < 3) return;
 
+    const organizerId = appState.participants[0]?.id;
     const activeIds = active.map((p) => p.id);
-    const activeIdSet = new Set(activeIds);
-
-    const scopedExclusions: ExclusionMap = {};
-    for (const id of activeIds) {
-      const list = (appState.exclusions[id] ?? []).filter((t) => activeIdSet.has(t));
-      if (list.length > 0) scopedExclusions[id] = list;
-    }
-
-    const assignment = solveSecretSanta(activeIds, scopedExclusions);
+    const assignment = solveSecretSanta(activeIds);
     if (!assignment) return;
 
     setIsDrawing(true);
@@ -68,11 +63,8 @@ export function App() {
 
       const entries: DrawEntry[] = await Promise.all(
         active.map(async (giver) => {
+          const isOrganizer = giver.id === organizerId;
           const receiver = byId.get(assignment[giver.id])!;
-          const normalizedPhone = normalizePhoneForWhatsApp(
-            giver.phone,
-            giver.countryCode,
-          )!;
 
           const payload: SecretPayload = {
             v: 1,
@@ -86,6 +78,21 @@ export function App() {
 
           const token = await encryptPayload(payload);
           const secretUrl = `${baseUrl}#s=${token}`;
+
+          if (isOrganizer) {
+            return {
+              giverId: giver.id,
+              giverName: giver.name.trim(),
+              isOrganizer: true,
+              secretUrl,
+              sent: true,
+            };
+          }
+
+          const normalizedPhone = normalizePhoneForWhatsApp(
+            giver.phone,
+            giver.countryCode,
+          )!;
           const whatsappUrl = buildWhatsAppShareUrl({
             normalizedPhone,
             giverName: giver.name.trim(),
@@ -96,6 +103,7 @@ export function App() {
           return {
             giverId: giver.id,
             giverName: giver.name.trim(),
+            isOrganizer: false,
             normalizedPhone,
             secretUrl,
             whatsappUrl,
@@ -166,14 +174,10 @@ export function App() {
           ) : (
             <SetupView
               participants={appState.participants}
-              exclusions={appState.exclusions}
               eventDetails={appState.eventDetails}
               isDrawing={isDrawing}
               onParticipantsChange={(participants) =>
                 setAppState((prev) => ({ ...prev, participants }))
-              }
-              onExclusionsChange={(exclusions) =>
-                setAppState((prev) => ({ ...prev, exclusions }))
               }
               onEventDetailsChange={(eventDetails) =>
                 setAppState((prev) => ({ ...prev, eventDetails }))
