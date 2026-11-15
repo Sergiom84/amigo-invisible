@@ -167,6 +167,7 @@ export function App() {
             <ShareDashboardView
               entries={appState.drawEntries}
               eventTitle={appState.eventDetails.title}
+              drawnAt={appState.drawnAt}
               onMarkSent={handleMarkSent}
               onRedraw={runDraw}
               onBackToEdit={handleBackToEdit}

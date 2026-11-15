@@ -16,6 +16,7 @@ import type { DrawEntry } from '../types';
 interface ShareDashboardViewProps {
   entries: DrawEntry[];
   eventTitle: string;
+  drawnAt: string | null;
   onMarkSent: (giverId: string) => void;
   onRedraw: () => void;
   onBackToEdit: () => void;
@@ -24,12 +25,14 @@ interface ShareDashboardViewProps {
 export function ShareDashboardView({
   entries,
   eventTitle,
+  drawnAt,
   onMarkSent,
   onRedraw,
   onBackToEdit,
 }: ShareDashboardViewProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [organizerTarget, setOrganizerTarget] = useState<string | null>(null);
+  const [hasOpenedOwn, setHasOpenedOwn] = useState(false);
 
   const organizerEntry = entries.find((e) => e.isOrganizer);
   const recipientEntries = entries.filter((e) => !e.isOrganizer);
@@ -37,6 +40,14 @@ export function ShareDashboardView({
   const sentCount = recipientEntries.filter((e) => e.sent).length;
   const totalCount = recipientEntries.length;
   const progressPct = totalCount > 0 ? Math.round((sentCount / totalCount) * 100) : 0;
+  const hasStartedSharing = sentCount > 0 || hasOpenedOwn;
+
+  const formattedTime = drawnAt
+    ? new Date(drawnAt).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
 
   async function handleToggleOrganizerReveal() {
     if (organizerTarget) {
@@ -50,6 +61,7 @@ export function ShareDashboardView({
     const payload = await decryptPayload(token);
     if (!payload) return;
     setOrganizerTarget(payload.r);
+    setHasOpenedOwn(true);
     try {
       confetti({
         particleCount: 65,
@@ -66,6 +78,7 @@ export function ShareDashboardView({
     try {
       await navigator.clipboard.writeText(entry.secretUrl);
       setCopiedId(entry.giverId);
+      onMarkSent(entry.giverId);
       setTimeout(() => {
         setCopiedId((curr) => (curr === entry.giverId ? null : curr));
       }, 2200);
@@ -74,28 +87,31 @@ export function ShareDashboardView({
         `Copia el sobre secreto de ${entry.giverName} (no lo abras si no es el tuyo):`,
         entry.secretUrl,
       );
+      onMarkSent(entry.giverId);
     }
   }
 
   function handleRedrawClick() {
-    if (sentCount > 0) {
+    if (hasStartedSharing) {
       const ok = window.confirm(
-        'Ya has enviado algún sobre. Si vuelves a sortear, los enlaces anteriores dejarán de coincidir con los nuevos. ¿Seguro que quieres volver a sortear?',
+        '⚠️ Ya has abierto, copiado o enviado algún sobre de este sorteo.\n\nSi vuelves a sortear, se creará un sorteo nuevo y los enlaces anteriores dejarán de valer (tendrás que reenviar TODOS los WhatsApps).\n\n¿Seguro que quieres hacer un sorteo nuevo?',
       );
       if (!ok) return;
     }
     setOrganizerTarget(null);
+    setHasOpenedOwn(false);
     onRedraw();
   }
 
   function handleEditClick() {
-    if (sentCount > 0) {
+    if (hasStartedSharing) {
       const ok = window.confirm(
-        'Ya has enviado algún sobre. Si editas la lista se descartará este sorteo. ¿Quieres continuar?',
+        '⚠️ Ya has abierto, copiado o enviado algún sobre de este sorteo.\n\nSi editas la lista para añadir o cambiar participantes, tendrás que volver a sortear y reenviar TODOS los WhatsApps de nuevo.\n\n¿Quieres continuar?',
       );
       if (!ok) return;
     }
     setOrganizerTarget(null);
+    setHasOpenedOwn(false);
     onBackToEdit();
   }
 
@@ -105,6 +121,18 @@ export function ShareDashboardView({
         <h2 className="section-title">
           <Lock size={19} />
           {eventTitle.trim() || 'Sobres listos'}
+          {formattedTime && (
+            <span
+              style={{
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontSize: '0.78rem',
+                fontWeight: 500,
+                color: 'var(--ink-muted)',
+              }}
+            >
+              · {formattedTime}
+            </span>
+          )}
         </h2>
         <span className="count-pill">
           {sentCount}/{totalCount} enviados
