@@ -96,16 +96,15 @@ export function RevealView({ token, onCreateNew }: RevealViewProps) {
       {payload.t && <span className="reveal-event-tag">{payload.t}</span>}
 
       {!revealed ? (
-        <>
-          <p className="reveal-copy">
-            Tu sobre secreto está listo. Asegúrate de que nadie esté mirando tu pantalla
-            antes de abrirlo.
-          </p>
-          <button type="button" className="primary-btn" onClick={handleReveal}>
-            <Sparkles size={19} />
-            Abrir mi sobre secreto
-          </button>
-        </>
+        <button
+          type="button"
+          className="primary-btn"
+          style={{ marginTop: 22 }}
+          onClick={handleReveal}
+        >
+          <Sparkles size={19} />
+          Abrir mi sobre secreto
+        </button>
       ) : (
         <>
           <div className="reveal-result-box" role="region" aria-live="polite">
@@ -131,15 +130,10 @@ export function RevealView({ token, onCreateNew }: RevealViewProps) {
             )}
           </div>
 
-          <p className="reveal-copy" style={{ marginTop: 16 }}>
-            Guarda el mensaje de WhatsApp por si necesitas volver a consultarlo más
-            adelante.
-          </p>
-
           <button
             type="button"
             className="secondary-btn"
-            style={{ marginTop: 16, width: '100%' }}
+            style={{ marginTop: 18, width: '100%' }}
             onClick={() => setRevealed(false)}
           >
             <EyeOff size={16} />
@@ -147,12 +141,6 @@ export function RevealView({ token, onCreateNew }: RevealViewProps) {
           </button>
         </>
       )}
-
-      <div>
-        <button type="button" className="ghost-link-btn" onClick={onCreateNew}>
-          ¿Quieres organizar tu propio Amigo Invisible? Créalo gratis aquí
-        </button>
-      </div>
     </div>
   );
 }

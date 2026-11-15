@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
 import { RevealView } from './components/RevealView';
 import { SetupView } from './components/SetupView';
 import { ShareDashboardView } from './components/ShareDashboardView';
@@ -144,16 +143,13 @@ export function App() {
     <div className="app-shell">
       <div className="app-container">
         <header className="hero-header">
-          <span className="hero-badge">
-            <Sparkles size={14} />
-            Gratis · Sin instalar nada · Sin spoilers
-          </span>
           <h1 className="hero-title">Amigo Invisible</h1>
-          <p className="hero-subtitle">
-            {secretToken
-              ? 'Alguien te ha enviado tu sobre secreto por WhatsApp.'
-              : 'Pon los nombres y WhatsApp, sortea y envía a cada persona su sobre secreto sin ver tú el resultado.'}
-          </p>
+          {!secretToken && (
+            <p className="hero-subtitle">
+              Pon los nombres y WhatsApp, sortea y envía a cada persona su sobre secreto
+              sin ver tú el resultado.
+            </p>
+          )}
         </header>
 
         <main>

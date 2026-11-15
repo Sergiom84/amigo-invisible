@@ -331,7 +331,7 @@ export function SetupView({
                   id="event-title"
                   type="text"
                   className="input"
-                  placeholder="Amigo Invisible Familiar"
+                  placeholder="ej. Cena de Navidad"
                   value={eventDetails.title}
                   onChange={(e) =>
                     onEventDetailsChange({ ...eventDetails, title: e.target.value })

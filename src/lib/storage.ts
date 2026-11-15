@@ -1,6 +1,6 @@
 import type { Participant, PersistedAppState } from '../types';
 
-const STORAGE_KEY = 'amigo_invisible_state_v1';
+const STORAGE_KEY = 'amigo_invisible_state_v2';
 
 export function createParticipant(): Participant {
   const id =
@@ -23,7 +23,7 @@ export function createDefaultState(): PersistedAppState {
     participants,
     exclusions: {},
     eventDetails: {
-      title: 'Amigo Invisible Familiar',
+      title: '',
       budget: '',
       date: '',
       note: '',
@@ -52,7 +52,7 @@ export function loadPersistedState(): PersistedAppState {
       })),
       exclusions: parsed.exclusions && typeof parsed.exclusions === 'object' ? parsed.exclusions : {},
       eventDetails: {
-        title: String(parsed.eventDetails?.title ?? 'Amigo Invisible Familiar'),
+        title: String(parsed.eventDetails?.title ?? ''),
         budget: String(parsed.eventDetails?.budget ?? ''),
         date: String(parsed.eventDetails?.date ?? ''),
         note: String(parsed.eventDetails?.note ?? ''),
